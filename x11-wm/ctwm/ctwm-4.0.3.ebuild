@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
-inherit cmake
+inherit cmake flag-o-matic
 
 DESCRIPTION="A clean, light window manager"
 HOMEPAGE="https://ctwm.org/"
@@ -28,6 +28,8 @@ DEPEND="
 "
 
 src_prepare() {
+	# Fix bug 715904 on musl builds
+	use elibc_musl && append-cflags -D_GNU_SOURCE
 	cmake_src_prepare
 
 	# implicit 'isspace'
@@ -39,9 +41,6 @@ src_configure() {
 		-DNOMANCOMPRESS=yes
 		-DDOCDIR=/usr/share/doc/${PF}
 	)
-
-	# Fix bug 715904 on musl builds
-	use elibc_musl && mycmakeargs+=( -D_GNU_SOURCE )
 
 	cmake_src_configure
 }

@@ -11,7 +11,6 @@ SRC_URI="https://ctwm.org/dist/${P}.tar.xz"
 LICENSE="MIT"
 SLOT="0"
 KEYWORDS="~amd64 ~ppc ~x86"
-IUSE="jpeg rplay xpm"
 
 RDEPEND="
 	x11-libs/libICE
@@ -19,14 +18,12 @@ RDEPEND="
 	x11-libs/libX11
 	x11-libs/libXext
 	x11-libs/libXmu
+	x11-libs/libXpm
 	x11-libs/libXt
-	jpeg? ( virtual/jpeg )
-	rplay? ( media-sound/rplay )
-	xpm? ( x11-libs/libXpm )
 "
 DEPEND="
 	${RDEPEND}
-	app-arch/xz-utils
+	virtual/jpeg
 	x11-base/xorg-proto
 "
 
@@ -40,11 +37,11 @@ src_prepare() {
 src_configure() {
 	local mycmakeargs=(
 		-DNOMANCOMPRESS=yes
-		-DDOCDIR="${EPREFIX}"/usr/share/doc/"${PF}"
-		-DUSE_JPEG=$(usex jpeg ON OFF)
-		-DUSE_RPLAY=$(usex rplay ON OFF)
-		-DUSE_XPM=$(usex xpm ON OFF)
+		-DDOCDIR=/usr/share/doc/${PF}
 	)
+
+	# Fix bug 715904 on musl builds
+	use elibc_musl && mycmakeargs+="-D_GNU_SOURCE"
 
 	cmake_src_configure
 }

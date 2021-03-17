@@ -41,7 +41,7 @@ src_configure() {
 	)
 
 	# Fix bug 715904 on musl builds
-	use elibc_musl && mycmakeargs+="-D_GNU_SOURCE"
+	use elibc_musl && mycmakeargs+=( -D_GNU_SOURCE )
 
 	cmake_src_configure
 }

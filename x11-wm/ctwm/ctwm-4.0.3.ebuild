@@ -15,7 +15,7 @@ KEYWORDS="~amd64 ~ppc ~x86"
 IUSE="jpeg rplay test xpm"
 RESTRICT="!test? ( test )"
 
-RDEPEND="
+COMMON_DEPEND="
 	x11-libs/libICE
 	x11-libs/libSM
 	x11-libs/libX11
@@ -24,16 +24,22 @@ RDEPEND="
 	x11-libs/libXt
 	jpeg? ( virtual/jpeg )
 	rplay? ( media-sound/rplay )
-	xpm? (x11-libs/libXpm )
+	xpm? ( x11-libs/libXpm )
 "
 DEPEND="
-	${RDEPEND}
+	${COMMON_DEPEND}
 	app-arch/xz-utils
 	x11-base/xorg-proto
 "
+RDEPEND="
+	${COMMON_DEPEND}
+	media-fonts/font-adobe-75dpi
+"
 
 src_prepare() {
-	use elibc_musl && append-cflags -D_GNU_SOURCE # Bug 715904
+	# Bug 715904
+	use elibc_musl && append-cflags -D_GNU_SOURCE
+
 	cmake_src_prepare
 
 	# implicit 'isspace'
@@ -53,8 +59,8 @@ src_configure() {
 }
 
 src_compile() {
-	cmake_src_compile all
-	use test && cmake_src_compile test_bins # Bug 701656
+	# Bug 701656
+	cmake_src_compile all $(usex test test_bins '')
 }
 
 src_test() {

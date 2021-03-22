@@ -11,11 +11,11 @@ SRC_URI="https://ctwm.org/dist/${P}.tar.xz"
 
 LICENSE="MIT"
 SLOT="0"
-KEYWORDS="~amd64 ~ppc ~x86"
+KEYWORDS="~amd64 ~x86"
 IUSE="jpeg rplay test xpm"
 RESTRICT="!test? ( test )"
 
-COMMON_DEPEND="
+RDEPEND="
 	x11-libs/libICE
 	x11-libs/libSM
 	x11-libs/libX11
@@ -27,18 +27,18 @@ COMMON_DEPEND="
 	xpm? ( x11-libs/libXpm )
 "
 DEPEND="
-	${COMMON_DEPEND}
+	${RDEPEND}
 	app-arch/xz-utils
 	x11-base/xorg-proto
 "
-RDEPEND="
-	${COMMON_DEPEND}
-	media-fonts/font-adobe-75dpi
-"
 
 src_prepare() {
-	# Bug 715904
-	use elibc_musl && append-cflags -D_GNU_SOURCE
+	if use elibc_musl; then
+		# Bug 715904, sigjmp_buf is guarded by GNU_SOURCE
+		append-cflags -D_GNU_SOURCE
+		# cfgchk test fails on musl due to locale
+		sed -i "/add_test(NAME cfgchk/,+6d" tests/CMakeLists.txt || die
+	fi
 
 	cmake_src_prepare
 
@@ -59,7 +59,8 @@ src_configure() {
 }
 
 src_compile() {
-	# Bug 701656
+	# Bug 701656, test_bins target needs to be compiled
+	# to satisfy the 't_efp' test
 	cmake_src_compile all $(usex test test_bins '')
 }
 

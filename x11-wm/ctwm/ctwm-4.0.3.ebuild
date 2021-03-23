@@ -33,12 +33,8 @@ DEPEND="
 "
 
 src_prepare() {
-	if use elibc_musl; then
-		# Bug 715904, sigjmp_buf is guarded by GNU_SOURCE
-		append-cflags -D_GNU_SOURCE
-		# cfgchk test fails on musl due to locale
-		sed -i "/add_test(NAME cfgchk/,+6d" tests/CMakeLists.txt || die
-	fi
+	# Bug 715904, sigjmp_buf is guarded by GNU_SOURCE
+	use elibc_musl && append-cflags -D_GNU_SOURCE
 
 	cmake_src_prepare
 

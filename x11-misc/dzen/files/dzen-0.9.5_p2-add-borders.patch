@@ -1,0 +1,136 @@
+diff --git a/dzen.h b/dzen.h
+index e4d8707..0f627b8 100644
+--- a/dzen.h
++++ b/dzen.h
+@@ -17,6 +17,7 @@
+ #define FONT		"-*-fixed-*-*-*-*-*-*-*-*-*-*-*-*"
+ #define BGCOLOR		"#111111"
+ #define FGCOLOR		"grey70"
++#define BORDERCOLOR	"#ffffff"
+ #define ESC_CHAR    '^'
+ 
+ #define ALIGNCENTER 0
+@@ -39,7 +40,7 @@
+ # define Button7 7
+ #endif
+ 
+-enum { ColFG, ColBG, ColLast };
++enum { ColFG, ColBG, ColLast, ColBorder };
+ 
+ /* exapansion directions */
+ enum { noexpand, left, right, both };
+@@ -87,7 +88,7 @@ extern sens_w window_sens[2];
+ 
+ /* title window */
+ struct TW {
+-	int x, y, width, height;
++	int x, y, width, height, bwidth;
+ 
+ 	char *name;
+ 	Window win;
+@@ -100,7 +101,7 @@ struct TW {
+ 
+ /* slave window */
+ struct SW {
+-	int x, y, width, height;
++	int x, y, width, height, bwidth;
+ 
+ 	char *name;
+ 	Window win;
+@@ -127,7 +128,7 @@ struct SW {
+ };
+ 
+ struct DZEN {
+-	int x, y, w, h;
++	int x, y, w, h, bw;
+ 	Bool running;
+ 	unsigned long norm[ColLast];
+ 
+@@ -140,6 +141,7 @@ struct DZEN {
+ 	const char *fnt;
+ 	const char *bg;
+ 	const char *fg;
++	const char *bc;
+ 	int line_height;
+ 
+ 	Display *dpy;
+diff --git a/main.c b/main.c
+index 9d71639..d792f27 100644
+--- a/main.c
++++ b/main.c
+@@ -482,6 +482,8 @@ x_read_resources(void) {
+ 			dzen.fg  = estrdup(xvalue.addr);
+ 		if( XrmGetResource(xdb, "dzen2.background", "*", datatype, &xvalue) == True )
+ 			dzen.bg  = estrdup(xvalue.addr);
++		if( XrmGetResource(xdb, "dzen2.bordercolor", "*", datatype, &xvalue) == True )
++			dzen.bc  = estrdup(xvalue.addr);
+ 		if( XrmGetResource(xdb, "dzen2.titlename", "*", datatype, &xvalue) == True )
+ 			dzen.title_win.name  = estrdup(xvalue.addr);
+ 		if( XrmGetResource(xdb, "dzen2.slavename", "*", datatype, &xvalue) == True )
+@@ -505,13 +507,16 @@ x_create_windows(int use_ewmh_dock) {
+ 		eprint("dzen: error, cannot allocate color '%s'\n", dzen.bg);
+ 	if((dzen.norm[ColFG] = getcolor(dzen.fg)) == ~0lu)
+ 		eprint("dzen: error, cannot allocate color '%s'\n", dzen.fg);
++	if((dzen.norm[ColBorder] = getcolor(dzen.bc)) == ~0lu)
++		eprint("dzen: error, cannot allocate color '%s'\n", dzen.bc);
+ 	setfont(dzen.fnt);
+ 
+ 	x_create_gcs();
+ 
+ 	/* window attributes */
+-	wa.override_redirect = (use_ewmh_dock ? 0 : 1);
++	wa.override_redirect = True;
+ 	wa.background_pixmap = ParentRelative;
++	wa.border_pixel = getcolor(dzen.bc);
+ 	wa.event_mask = ExposureMask | ButtonReleaseMask | ButtonPressMask | ButtonMotionMask | EnterWindowMask | LeaveWindowMask | KeyPressMask;
+ 
+ #ifdef DZEN_XINERAMA
+@@ -526,7 +531,8 @@ x_create_windows(int use_ewmh_dock) {
+ 			dzen.title_win.x, dzen.title_win.y, dzen.title_win.width, dzen.line_height, 0,
+ 			DefaultDepth(dzen.dpy, dzen.screen), CopyFromParent,
+ 			DefaultVisual(dzen.dpy, dzen.screen),
+-			CWOverrideRedirect | CWBackPixmap | CWEventMask, &wa);
++			CWOverrideRedirect | CWBackPixmap | CWBorderPixel | CWEventMask, &wa);
++	XSetWindowBorderWidth(dzen.dpy, dzen.title_win.win, dzen.title_win.bwidth);
+ 	/* set class property */
+ 	class_hint = XAllocClassHint();
+ 	class_hint->res_name  = "dzen2";
+@@ -909,6 +915,7 @@ main(int argc, char *argv[]) {
+ 	dzen.fnt = FONT;
+ 	dzen.bg  = BGCOLOR;
+ 	dzen.fg  = FGCOLOR;
++	dzen.bc  = BORDERCOLOR;
+ 	dzen.slave_win.max_lines  = 0;
+ 	dzen.running = True;
+ 	dzen.xinescreen = 0;
+@@ -1015,6 +1022,9 @@ main(int argc, char *argv[]) {
+ 		else if(!strncmp(argv[i], "-fg", 4)) {
+ 			if(++i < argc) dzen.fg = argv[i];
+ 		}
++		else if(!strncmp(argv[i], "-bc", 4)) {
++			if(++i < argc) dzen.bc = argv[i];
++		}
+ 		else if(!strncmp(argv[i], "-x", 3)) {
+ 			if(++i < argc) dzen.title_win.x = dzen.slave_win.x = atoi(argv[i]);
+ 		}
+@@ -1030,6 +1040,9 @@ main(int argc, char *argv[]) {
+ 		else if(!strncmp(argv[i], "-tw", 4)) {
+ 			if(++i < argc) dzen.title_win.width = atoi(argv[i]);
+ 		}
++		else if(!strncmp(argv[i], "-bw", 3)) {
++			if(++i < argc) dzen.title_win.bwidth = dzen.slave_win.bwidth = atoi(argv[i]);
++		}
+ 		else if(!strncmp(argv[i], "-fn-preload", 12)) {
+ 			if(++i < argc) {
+ 				fnpre = estrdup(argv[i]);
+@@ -1061,8 +1074,8 @@ main(int argc, char *argv[]) {
+ 		}
+ 		else
+ 			eprint("usage: dzen2 [-v] [-p [seconds]] [-m [v|h]] [-ta <l|c|r>] [-sa <l|c|r>]\n"
+-                   "             [-x <pixel>] [-y <pixel>] [-w <pixel>] [-h <pixel>] [-tw <pixel>] [-u]\n"
+-				   "             [-e <string>] [-l <lines>]  [-fn <font>] [-bg <color>] [-fg <color>]\n"
++                   "             [-x <pixel>] [-y <pixel>] [-w <pixel>] [-h <pixel>] [-tw <pixel>] [-bw <pixel>] [-u]\n"
++				   "             [-e <string>] [-l <lines>]  [-fn <font>] [-bg <color>] [-fg <color>] [-bc <color>]\n"
+ 				   "             [-geometry <geometry string>] [-expand <left|right>] [-dock]\n"
+ 				   "             [-title-name <string>] [-slave-name <string>]\n"
+ #ifdef DZEN_XINERAMA

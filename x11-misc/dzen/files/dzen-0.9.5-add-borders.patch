@@ -24,7 +24,7 @@ index e4d8707..0f627b8 100644
  /* title window */
  struct TW {
 -	int x, y, width, height;
-+	int x, y, width, height, bwidth;
++	int x, y, width, height, border_width;
  
  	char *name;
  	Window win;
@@ -33,7 +33,7 @@ index e4d8707..0f627b8 100644
  /* slave window */
  struct SW {
 -	int x, y, width, height;
-+	int x, y, width, height, bwidth;
++	int x, y, width, height, border_width;
  
  	char *name;
  	Window win;
@@ -91,7 +91,7 @@ index 9d71639..d792f27 100644
  			DefaultVisual(dzen.dpy, dzen.screen),
 -			CWOverrideRedirect | CWBackPixmap | CWEventMask, &wa);
 +			CWOverrideRedirect | CWBackPixmap | CWBorderPixel | CWEventMask, &wa);
-+	XSetWindowBorderWidth(dzen.dpy, dzen.title_win.win, dzen.title_win.bwidth);
++	XSetWindowBorderWidth(dzen.dpy, dzen.title_win.win, dzen.title_win.border_width);
  	/* set class property */
  	class_hint = XAllocClassHint();
  	class_hint->res_name  = "dzen2";
@@ -117,8 +117,8 @@ index 9d71639..d792f27 100644
  		else if(!strncmp(argv[i], "-tw", 4)) {
  			if(++i < argc) dzen.title_win.width = atoi(argv[i]);
  		}
-+		else if(!strncmp(argv[i], "-bw", 3)) {
-+			if(++i < argc) dzen.title_win.bwidth = dzen.slave_win.bwidth = atoi(argv[i]);
++		else if(!strncmp(argv[i], "-bw", 4)) {
++			if(++i < argc) dzen.title_win.border_width = dzen.slave_win.border_width = atoi(argv[i]);
 +		}
  		else if(!strncmp(argv[i], "-fn-preload", 12)) {
  			if(++i < argc) {

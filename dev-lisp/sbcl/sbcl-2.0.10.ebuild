@@ -40,7 +40,8 @@ SLOT="0/${PV}"
 KEYWORDS="~amd64 ~ppc ~sparc ~x86 ~amd64-linux ~x86-linux ~x64-macos ~x86-solaris"
 IUSE="debug doc source +threads +unicode pax_kernel zlib"
 
-CDEPEND=">=dev-lisp/asdf-3.3:="
+CDEPEND=">=dev-lisp/asdf-3.3:=
+		elibc_musl? ( >=dev-lisp/ecls-20.4.24 )"
 DEPEND="${CDEPEND}
 		doc? ( sys-apps/texinfo >=media-gfx/graphviz-2.26.0 )
 		pax_kernel? ( sys-apps/elfix )"

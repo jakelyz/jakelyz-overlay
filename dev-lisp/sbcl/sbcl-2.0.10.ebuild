@@ -40,7 +40,8 @@ SLOT="0/${PV}"
 KEYWORDS="~amd64 ~ppc ~sparc ~x86 ~amd64-linux ~x86-linux ~x64-macos ~x86-solaris"
 IUSE="debug doc source +threads +unicode pax_kernel zlib"
 
-CDEPEND=">=dev-lisp/asdf-3.3:="
+CDEPEND=">=dev-lisp/asdf-3.3:=
+		elibc_musl? ( >=dev-lisp/ecls-20.4.24 )"
 DEPEND="${CDEPEND}
 		doc? ( sys-apps/texinfo >=media-gfx/graphviz-2.26.0 )
 		pax_kernel? ( sys-apps/elfix )"
@@ -162,13 +163,21 @@ src_compile() {
 			"${S}"/make-target-2.sh || die "Cannot disable PaX on second GENESIS runtime"
 	fi
 
+	# Use ecl to bootstrap instead of the binary, if using musl.
+	# ecl needs to be built and installed first.
+	if use elibc_musl ; then
+		local bootstrap_sbcl="ecl"
+	else
+		local bootstrap_sbcl="sh ${bindir}/run-sbcl.sh --no-sysinit --no-userinit --disable-debugger"
+	fi
+
 	# clear the environment to get rid of non-ASCII strings, see bug #174702
 	# set HOME for paludis
 	env - HOME="${T}" PATH="${PATH}" \
 		CC="$(tc-getCC)" AS="$(tc-getAS)" LD="$(tc-getLD)" \
 		CPPFLAGS="${CPPFLAGS}" CFLAGS="${CFLAGS}" ASFLAGS="${ASFLAGS}" LDFLAGS="${LDFLAGS}" \
 		GNUMAKE=make ./make.sh \
-		"sh ${bindir}/run-sbcl.sh --no-sysinit --no-userinit --disable-debugger" \
+		"${bootstrap_sbcl}" \
 		|| die "make failed"
 
 	# need to set HOME because libpango(used by graphviz) complains about it
